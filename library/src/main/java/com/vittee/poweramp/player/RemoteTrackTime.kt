@@ -1,56 +1,107 @@
 package com.vittee.poweramp.player
 
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
 import android.content.IntentFilter
 import android.os.Handler
+import android.util.Log
 
+
+private const val UPDATE_DELAY = 1000L
 
 class RemoteTrackTime(private val context: Context) {
+
 
     private val mHandler = Handler()
     var trackTimeListener: TrackTimeListener? = null
 
+    private var mPosition: Int = 0
     private var mPlaying: Boolean = false
+    private var mStartTimeMs: Long = 0
+    private var mStartPosition: Int = 0
 
-//    private val mTickRunnable = object : Runnable {
-//        override fun run() {
-//            mPosition = (System.currentTimeMillis() - mStartTimeMs + 500) as Int / 1000 + mStartPosition
-//            if (LOG) Log.w(TAG, "mTickRunnable mPosition=" + mPosition)
-//            if (mTrackTimeListener != null) {
-//                mTrackTimeListener.onTrackPositionChanged(mPosition)
-//            }
-//            mHandler.removeCallbacks(this)
-//            mHandler.postDelayed(this, UPDATE_DELAY)
-//        }
-//    }
+
+    private val mTickRunnable = object : Runnable {
+        override fun run() {
+            mPosition = (System.currentTimeMillis() - mStartTimeMs + 500).toInt() / 1000 + mStartPosition
+            Log.w("RemoteTrackTime", "mTickRunnable mPosition=" + mPosition)
+
+            trackTimeListener?.onTrackPositionChanged(mPosition)
+
+            mHandler.removeCallbacks(this)
+            mHandler.postDelayed(this, UPDATE_DELAY)
+        }
+    }
+
+    private val mTrackPosSyncReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            val pos = intent.getIntExtra(Track.POSITION.value, 0)
+            Log.w("RemoteTrackTime", "mTrackPosSyncReceiver sync=" + pos)
+            updateTrackPosition(pos)
+        }
+
+    }
 
     fun registerAndLoadStatus() {
         val filter = IntentFilter(ACTION_TRACK_POS_SYNC)
 
-//        context.registerReceiver(mTrackPosSyncReceiver, filter)
-//        context.startService(PowerampAPI.newAPIIntent().putExtra(PowerampAPI.COMMAND, PowerampAPI.Commands.POS_SYNC))
+        context.registerReceiver(mTrackPosSyncReceiver, filter)
+        context.startService(newAPIIntent().putExtra(COMMAND, Commands.POS_SYNC.value))
 
         if (mPlaying) {
-//            mHandler.removeCallbacks(mTickRunnable)
-//            mHandler.postDelayed(mTickRunnable, 0)
+            mHandler.removeCallbacks(mTickRunnable)
+            mHandler.postDelayed(mTickRunnable, 0)
         }
     }
 
     fun unregister() {
-//        if (mTrackPosSyncReceiver != null) {
-//            try {
-//                context.unregisterReceiver(mTrackPosSyncReceiver)
-//            } catch (ex: Exception) {
-//
-//            }
-//
-//        }
-//
-//        mHandler.removeCallbacks(mTickRunnable)
+        try {
+            context.unregisterReceiver(mTrackPosSyncReceiver)
+        } catch (ex: Exception) {
+
+        }
+
+        mHandler.removeCallbacks(mTickRunnable)
     }
 
     interface TrackTimeListener {
         fun onTrackDurationChanged(duration: Int)
         fun onTrackPositionChanged(position: Int)
+    }
+
+    fun updateTrackPosition(pos: Int) {
+        mPosition = pos
+        if (mPlaying) {
+            mStartTimeMs = System.currentTimeMillis()
+            mStartPosition = mPosition
+        }
+
+
+        trackTimeListener?.onTrackPositionChanged(pos)
+
+    }
+
+    fun startSongProgress() {
+        if (mPlaying) return
+
+        mStartTimeMs = System.currentTimeMillis()
+        mStartPosition = mPosition
+        mHandler.removeCallbacks(mTickRunnable)
+        mHandler.postDelayed(mTickRunnable, UPDATE_DELAY)
+        mPlaying = true
+    }
+
+    fun stopSongProgress() {
+        if (!mPlaying) return
+
+        mHandler.removeCallbacks(mTickRunnable)
+        mPlaying = false
+
+    }
+
+    fun updateTrackDuration(duration: Int) {
+        //mDuration = duration;
+        trackTimeListener?.onTrackDurationChanged(duration)
     }
 }
