@@ -47,7 +47,7 @@ class RemoteTrackTime(private val context: Context) {
         val filter = IntentFilter(ACTION_TRACK_POS_SYNC)
 
         context.registerReceiver(mTrackPosSyncReceiver, filter)
-        context.startService(newAPIIntent().putExtra(COMMAND, Commands.POS_SYNC.value))
+        context.startService(newAPIIntent().putExtra(EXTRA_COMMAND, Commands.POS_SYNC.value))
 
         if (mPlaying) {
             mHandler.removeCallbacks(mTickRunnable)

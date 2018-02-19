@@ -1,3 +1,5 @@
+@file:Suppress("unused")
+
 package com.vittee.poweramp.player
 
 import android.content.ComponentName
@@ -5,10 +7,10 @@ import android.content.Intent
 import android.net.Uri
 
 
-const val PACKAGE_NAME = "com.maxmpz.audioplayer"
-const val PLAYER_SERVICE_NAME = "com.maxmpz.audioplayer.player.PlayerService"
-
-const val VERSION: Int = 533
+/**
+ * Defines PowerampAPI version, which could be also 200 and 210 for older Poweramps.
+ */
+const val POWERAMP_VERSION: Int = 533
 
 /**
  * No id flag.
@@ -17,37 +19,66 @@ const val NO_ID = 0L
 
 const val AUTHORITY = "com.maxmpz.audioplayer.data"
 
-val ROOT_URI: Uri = Uri.Builder().scheme("content").authority(AUTHORITY).build()
+val POWERAMP_ROOT_URI: Uri = Uri.Builder().scheme("content").authority(AUTHORITY).build()
 
-val PLAYER_SERVICE_COMPONENT_NAME = ComponentName(PACKAGE_NAME, PLAYER_SERVICE_NAME)
+/**
+ * Uri query parameter - filter.
+ */
+const val PARAM_FILTER = "flt"
+/**
+ * Uri query parameter - shuffle mode.
+ */
+const val PARAM_SHUFFLE = "shf"
 
+/**
+ * Poweramp Control action.
+ * Should be sent with sendBroadcast().
+ * Extras:
+ * 	- cmd - int - command to execute.
+ */
 const val ACTION_API_COMMAND = "com.maxmpz.audioplayer.API_COMMAND"
-const val COMMAND = "cmd"
 
-const val ACTION_TRACK_CHANGED = "com.maxmpz.audioplayer.TRACK_CHANGED"
-const val ACTION_AA_CHANGED = "com.maxmpz.audioplayer.AA_CHANGED"
-const val ACTION_STATUS_CHANGED = "com.maxmpz.audioplayer.STATUS_CHANGED"
-const val ACTION_TRACK_POS_SYNC = "com.maxmpz.audioplayer.TPOS_SYNC"
-const val ACTION_PLAYING_MODE_CHANGED = "com.maxmpz.audioplayer.PLAYING_MODE_CHANGED"
+/**
+ * ACTION_API_COMMAND extra.
+ * Int.
+ */
+const val EXTRA_COMMAND = "cmd"
 
-const val ACTION_EQU_CHANGED = "com.maxmpz.audioplayer.EQU_CHANGED"
-const val ACTION_SHOW_CURRENT = "com.maxmpz.audioplayer.ACTION_SHOW_CURRENT"
-const val ACTION_SHOW_LIST = "com.maxmpz.audioplayer.ACTION_SHOW_LIST"
+/**
+ * STATUS_CHANGED track extra.
+ * Bundle.
+ */
+const val EXTRA_TRACK = "track"
 
-const val TRACK = "track"
+/**
+ * Extra.
+ * String.
+ */
+const val EXTRA_ALBUM_ART_PATH = "aaPath"
 
-const val ALBUM_ART_PATH = "aaPath"
-const val ALBUM_ART_BITMAP = "aaBitmap"
+/**
+ * Extra.
+ * Bitmap.
+ */
+const val EXTRA_ALBUM_ART_BITMAP = "aaBitmap"
 
-const val DELAYED = "delayed"
-const val TIMESTAMP = "ts"
+/**
+ * Extra.
+ * boolean.
+ */
+const val EXTRA_DELAYED = "delayed"
 
-const val STATUS = "status"
-const val FAILED = "failed"
-const val PAUSED = "paused"
-const val SHUFFLE = "shuffle"
-const val REPEAT = "repeat"
+/**
+ * Extra.
+ * long.
+ */
+const val EXTRA_TIMESTAMP = "ts"
 
+/**
+ * STATUS_CHANGED extra. See Status class for values.
+ * Int.
+ */
+const val EXTRA_STATUS = "status"
 
 enum class Status(val value: Int) {
     TRACK_PLAYING(1),
@@ -56,35 +87,316 @@ enum class Status(val value: Int) {
 }
 
 enum class Commands(val value: Int) {
+    /**
+     * Extras:
+     * - keepService - boolean - (optional) if true, Poweramp won't unload player service. Notification will be appropriately updated.
+     */
     TOGGLE_PLAY_PAUSE(1),
+
+    /**
+     * Extras:
+     * - keepService - boolean - (optional) if true, Poweramp won't unload player service. Notification will be appropriately updated.
+     */
     PAUSE(2),
     RESUME(3),
+
+    /**
+     * NOTE: subject to 200ms throttling.
+     */
     NEXT(4),
+
+    /**
+     * NOTE: subject to 200ms throttling.
+     */
     PREVIOUS(5),
+
+    /**
+     * NOTE: subject to 200ms throttling.
+     */
     NEXT_IN_CAT(6),
+
+    /**
+     * NOTE: subject to 200ms throttling.
+     */
     PREVIOUS_IN_CAT(7),
+
+    /**
+     * Extras:
+     * - showToast - boolean - (optional) if false, no toast will be shown. Applied for cycle only.
+     * - repeat - int - (optional) if exists, appropriate mode will be directly selected, otherwise modes will be cycled, see Repeat class.
+     */
     REPEAT(8),
+
+    /**
+     * Extras:
+     * - showToast - boolean - (optional) if false, no toast will be shown. Applied for cycle only.
+     * - shuffle - int - (optional) if exists, appropriate mode will be directly selected, otherwise modes will be cycled, see Shuffle class.
+     */
     SHUFFLE(9),
+
     BEGIN_FAST_FORWARD(10),
     END_FAST_FORWARD(11),
     BEGIN_REWIND(12),
     END_REWIND(13),
     STOP(14),
+
+    /**
+     * Extras:
+     * - pos - int - seek position in seconds.
+     */
     SEEK(15),
     POS_SYNC(16),
+
+    /**
+     * Extras:
+     * - paused - boolean - (optional) default false. OPEN_TO_PLAY command starts playing the file immediately, unless "paused" extra is true.
+     *                       (see PowerampAPI.PAUSED)
+     *
+     * - pos - int - (optional) seek to this position in song before playing (see PowerampAPI.Track.POSITION)
+     */
     OPEN_TO_PLAY(20),
+
+    /**
+     * Extras:
+     * - id - long - preset ID
+     */
     SET_EQU_PRESET(50),
+
+    /**
+     * Extras:
+     * - value - string - equalizer values, see ACTION_EQU_CHANGED description.
+     */
     SET_EQU_STRING(51),
+
+    /**
+     * Extras:
+     * - name - string - equalizer band (bass/treble/preamp/31/62../8K/16K) name
+     * - value - float - equalizer band value (bass/treble/, 31/62../8K/16K => -1.0...1.0, preamp => 0..2.0)
+     */
     SET_EQU_BAND(52),
+
+    /**
+     * Extras:
+     * - equ - boolean - if exists and true, equalizer is enabled
+     * - tone - boolean - if exists and true, tone is enabled
+     */
     SET_EQU_ENABLED(53),
+
+    /**
+     * Used by Notification controls to stop pending/paused service/playback and unload/remove notification.
+     * Since 2.0.6
+     */
+
     STOP_SERVICE(100)
 }
 
-const val ID = "id"
-const val NAME = "name"
-const val VALUE = "value"
-const val EQU = "equ"
-const val TONE = "tone"
+/**
+ * Extra.
+ * Mixed.
+ */
+const val EXTRA_API_VERSION = "api"
+
+/**
+ * Extra.
+ * Mixed.
+ */
+const val EXTRA_CONTENT = "content"
+
+/**
+ * Extra.
+ * String.
+ */
+const val EXTRA_PACKAGE = "pak"
+
+/**
+ * Extra.
+ * String.
+ */
+const val EXTRA_LABEL = "label"
+
+/**
+ * Extra.
+ * Boolean.
+ */
+const val EXTRA_AUTO_HIDE = "autoHide"
+
+/**
+ * Extra.
+ * Bitmap.
+ */
+const val EXTRA_ICON = "icon"
+
+/**
+ * Extra.
+ * Boolean.
+ */
+const val EXTRA_MATCH_FILE = "matchFile"
+
+/**
+ * Extra.
+ * Boolean
+ */
+const val EXTRA_SHOW_TOAST = "showToast"
+
+/**
+ * Extra.
+ * Long.
+ */
+const val EXTRA_ID = "id"
+
+/**
+ * Extra.
+ * String.
+ */
+const val EXTRA_NAME = "name"
+
+/**
+ * Extra.
+ * Mixed.
+ */
+const val EXTRA_VALUE = "value"
+
+/**
+ * Extra.
+ * Boolean.
+ */
+const val EXTRA_EQU = "equ"
+
+/**
+ * Extra.
+ * Boolean.
+ */
+const val EXTRA_TONE = "tone"
+
+/**
+ * Extra.
+ * Boolean.
+ * Since 2.0.6
+ */
+const val EXTRA_KEEP_SERVICE = "keepService"
+
+/**
+ * Extra.
+ * Boolean
+ * Since build 533
+ */
+const val EXTRA_BEEP = "beep"
+
+/**
+ * Poweramp track changed.
+ * Sticky intent.
+ * Extras:
+ * - track - bundle - Track bundle, see Track class.
+ * - ts - long - timestamp of the event (System.currentTimeMillis()).
+ *  Note, that by default Poweramp won't search/download album art when screen is OFF, but will do that on next screen ON event.
+ */
+const val ACTION_TRACK_CHANGED = "com.maxmpz.audioplayer.TRACK_CHANGED"
+
+/**
+ * Album art was changed. Album art can be the same for whole album/folder, thus usually it will be updated less frequently comparing to TRACK_CHANGE.
+ * If both aaPath and aaBitmap extras are missing that means no album art exists for the current track(s).
+ * Note that there is no direct Album Art to track relation, i.e. both track and album art can change independently from each other -
+ * for example - when new album art asynchronously downloaded from internet or selected by user.
+ * Sticky intent.
+ * Extras:
+ * - aaPath - String - (optional) if exists, direct path to the cached album art is available.
+ * - aaBitmap - Bitmap - (optional)	if exists, some rescaled up to 500x500 px album art bitmap is available.
+ *              There will be aaBitmap if aaPath is available, but image is bigger than 600x600 px.
+ * - delayed - boolean - (optional) if true, this album art was downloaded or selected later by user.
+
+ * - ts - long - timestamp of the event (System.currentTimeMillis()).
+ */
+const val ACTION_AA_CHANGED = "com.maxmpz.audioplayer.AA_CHANGED"
+
+/**
+ * Poweramp playing status changed (track started/paused/resumed/ended, playing ended).
+ * Sticky intent.
+ * Extras:
+ * - status - string - one of the STATUS_* values
+ * - pos - int - (optional) current in-track position in seconds.
+ * - ts - long - timestamp of the event (System.currentTimeMillis()).
+ * - additional extras - depending on STATUS_ value (see STATUS_* description below).
+ */
+const val ACTION_STATUS_CHANGED = "com.maxmpz.audioplayer.STATUS_CHANGED"
+
+/**
+ * NON sticky intent.
+ * - pos - int - current in-track position in seconds.
+ */
+const val ACTION_TRACK_POS_SYNC = "com.maxmpz.audioplayer.TPOS_SYNC"
+
+/**
+ * Poweramp repeat or shuffle mode changed.
+ * Sticky intent.
+ * Extras:
+ * - repeat - int - new repeat mode. See RepeatMode class.
+ * - shuffle - int - new shuffle mode. See ShuffleMode class.
+ * - ts - long - timestamp of the event (System.currentTimeMillis()).	 *
+ */
+const val ACTION_PLAYING_MODE_CHANGED = "com.maxmpz.audioplayer.PLAYING_MODE_CHANGED"
+
+/**
+ * Poweramp equalizer settings changed.
+ * Sticky intent.
+ * Extras:
+ * - name - string - preset name. If no name extra exists, it's not a preset.
+ * - id - long - preset id. If no id extra exists, it's not a preset.
+ * - value - string - equalizer and tone values in format:
+ *   	bass=pos_float|treble=pos_float|31=float|62=float|....|16K=float|preamp=0.0 ... 2.0
+ *      where float = -1.0 ... 1.0, pos_float = 0.0 ... 1.0
+ * - equ - boolean - true if equalizer bands are enabled
+ * - tone - boolean - truel if tone bands are enabled
+ * - ts - long - timestamp of the event (System.currentTimeMillis()).
+ */
+
+const val ACTION_EQU_CHANGED = "com.maxmpz.audioplayer.EQU_CHANGED"
+
+/**
+ * Special actions for com.maxmpz.audioplayer.PlayerUIActivity only.
+ */
+const val ACTION_SHOW_CURRENT = "com.maxmpz.audioplayer.ACTION_SHOW_CURRENT"
+const val ACTION_SHOW_LIST = "com.maxmpz.audioplayer.ACTION_SHOW_LIST"
+
+const val POWERAMP_PACKAGE_NAME = "com.maxmpz.audioplayer"
+const val POWERAMP_PLAYER_SERVICE_NAME = "com.maxmpz.audioplayer.player.PlayerService"
+
+val POWERAMP_PLAYER_SERVICE_COMPONENT_NAME = ComponentName(POWERAMP_PACKAGE_NAME, POWERAMP_PLAYER_SERVICE_NAME)
+
+const val ACTIVITY_PLAYER_UI = "com.maxmpz.audioplayer.PlayerUIActivity"
+const val ACTIVITY_EQ = "com.maxmpz.audioplayer.EqActivity"
+
+/**
+ * If com.maxmpz.audioplayer.ACTION_SHOW_LIST action is sent to this activity, it will react to some extras.
+ * Extras:
+ * Data:
+ * - uri - uri of the list to display.
+ */
+const val ACTIVITY_PLAYLIST = "com.maxmpz.audioplayer.PlayListActivity"
+const val ACTIVITY_SETTINGS = "com.maxmpz.audioplayer.preference.SettingsActivity"
+
+/**
+ * STATUS_CHANGED trackEnded extra.
+ * Boolean. True if track failed to play.
+ */
+const val EXTRA_FAILED = "failed"
+
+/**
+ * STATUS_CHANGED trackStarted/trackPausedResumed extra.
+ * Boolean. True if track is paused.
+ */
+const val EXTRA_PAUSED = "paused"
+
+/**
+ * PLAYING_MODE_CHANGED extra. See ShuffleMode class.
+ * Integer.
+ */
+const val EXTRA_SHUFFLE = "shuffle"
+
+/**
+ * PLAYING_MODE_CHANGED extra. See RepeatMode class.
+ * Integer.
+ */
+const val EXTRA_REPEAT = "repeat"
 
 enum class Track(val value: String) {
     ID("id"),
@@ -149,10 +461,10 @@ enum class ShuffleMode(val value: Int) {
 }
 
 enum class RepeatMode(val value: Int) {
-    REPEAT_NONE(0),
-    REPEAT_ON(1),
-    REPEAT_ADVANCE(2),
-    REPEAT_SONG(3)
+    NONE(0),
+    ON(1),
+    ADVANCE(2),
+    SONG(3)
 }
 
 class Scanner {
@@ -216,6 +528,38 @@ class Scanner {
     }
 }
 
+enum class Cats(val value: Int) {
+    ROOT(0),
+    FOLDERS(10),
+    GENRES_ID_ALBUMS(210),
+    ALBUMS(200),
+    GENRES(320),
+    ARTISTS(500),
+    ARTISTS_ID_ALBUMS(220),
+    ARTISTS__ALBUMS(250),
+    COMPOSERS(600),
+    COMPOSERS_ID_ALBUMS(230),
+    PLAYLISTS(100),
+    QUEUE(800),
+    MOST_PLAYED(43),
+    TOP_RATED(48),
+    RECENTLY_ADDED(53),
+    RECENTLY_PLAYED(58),
+}
+
+class Settings {
+    companion object {
+        @JvmStatic
+        val ACTION_EXPORT_SETTINGS = "com.maxmpz.audioplayer.ACTION_EXPORT_SETTINGS"
+
+        @JvmStatic
+        val ACTION_IMPORT_SETTINGS = "com.maxmpz.audioplayer.ACTION_IMPORT_SETTINGS"
+
+        @JvmStatic
+        val EXTRA_UI = "ui"
+    }
+}
+
 fun newAPIIntent(): Intent {
-    return Intent(ACTION_API_COMMAND).setComponent(PLAYER_SERVICE_COMPONENT_NAME)
+    return Intent(ACTION_API_COMMAND).setComponent(POWERAMP_PLAYER_SERVICE_COMPONENT_NAME)
 }

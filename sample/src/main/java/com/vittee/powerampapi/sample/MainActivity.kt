@@ -19,7 +19,7 @@ import com.vittee.poweramp.player.TableDefs
 import com.vittee.poweramp.widget.WidgetUtilsLite
 import java.io.File
 import android.content.Intent
-
+import com.vittee.poweramp.player.api.Poweramp
 
 
 class MainActivity : AppCompatActivity(), View.OnClickListener, View.OnLongClickListener, View.OnTouchListener, SeekBar.OnSeekBarChangeListener, RemoteTrackTime.TrackTimeListener {
@@ -136,18 +136,60 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, View.OnLongClick
         startService(createCommandIntent(command))
     }
 
-    private fun createCommandIntent(command: Commands) = Intent(ACTION_API_COMMAND).putExtra(COMMAND, command.value).setPackage(PACKAGE_NAME)
+    private fun createCommandIntent(command: Commands) = Intent(ACTION_API_COMMAND).putExtra(EXTRA_COMMAND, command.value).setPackage(POWERAMP_PACKAGE_NAME)
+
+    private val poweramp = Poweramp(this)
 
     override fun onClick(v: View) {
         val command = when (v.id) {
-            R.id.play -> Commands.TOGGLE_PLAY_PAUSE
-            R.id.pause -> Commands.PAUSE
-            R.id.prev -> Commands.PREVIOUS
-            R.id.next -> Commands.NEXT
-            R.id.prev_in_cat -> Commands.PREVIOUS_IN_CAT
-            R.id.next_in_cat -> Commands.NEXT_IN_CAT
-            R.id.repeat, R.id.repeat_all, R.id.repeat_off -> Commands.REPEAT
+            R.id.play -> {
+                poweramp.togglePlay()
+                return
+            }
+
+            R.id.pause -> {
+                poweramp.pause()
+                return
+            }
+
+            R.id.prev -> {
+                poweramp.previous()
+                return
+            }
+
+            R.id.next -> {
+                poweramp.next()
+                return
+            }
+
+            R.id.prev_in_cat -> {
+                poweramp.previousInCategory()
+                return
+            }
+
+            R.id.next_in_cat -> {
+                poweramp.nextInCategory()
+                return
+            }
+
+            R.id.repeat -> {
+                poweramp.cycleRepeatMode()
+                return
+            }
+
+            R.id.repeat_all -> {
+                poweramp.repeat(RepeatMode.ON)
+                return
+            }
+
+            R.id.repeat_off -> {
+                poweramp.repeat(RepeatMode.NONE)
+                return
+            }
+
             R.id.shuffle, R.id.shuffle_all, R.id.shuffle_off -> Commands.SHUFFLE
+
+
             R.id.play_file -> Commands.OPEN_TO_PLAY
 
             R.id.play_album -> {
@@ -181,12 +223,12 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, View.OnLongClick
             }
 
             R.id.pa_folders -> {
-                startActivity(Intent(ACTION_SHOW_LIST).setData(ROOT_URI.buildUpon().appendEncodedPath("folders").build()))
+                startActivity(Intent(ACTION_SHOW_LIST).setData(POWERAMP_ROOT_URI.buildUpon().appendEncodedPath("folders").build()))
                 return
             }
 
             R.id.pa_all_songs -> {
-                startActivity(Intent(ACTION_SHOW_LIST).setData(ROOT_URI.buildUpon().appendEncodedPath("files").build()))
+                startActivity(Intent(ACTION_SHOW_LIST).setData(POWERAMP_ROOT_URI.buildUpon().appendEncodedPath("files").build()))
                 return
             }
 
@@ -206,7 +248,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, View.OnLongClick
             }
 
             R.id.pa_song_scan -> {
-                val allFilesUri = ROOT_URI.buildUpon().appendEncodedPath("files").build()
+                val allFilesUri = POWERAMP_ROOT_URI.buildUpon().appendEncodedPath("files").build()
 
                 // Find just any first available track
                 val c = contentResolver.query(allFilesUri, arrayOf(TableDefs.Files._ID, TableDefs.Files.FULL_PATH), null, null, TableDefs.Files.NAME + " COLLATE NOCASE LIMIT 1")
@@ -251,11 +293,11 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, View.OnLongClick
             val intent = createCommandIntent(it)
 
             when (v.id) {
-                R.id.repeat_all -> intent.putExtra(REPEAT, RepeatMode.REPEAT_ON.value)
-                R.id.repeat_off -> intent.putExtra(REPEAT, RepeatMode.REPEAT_NONE.value)
+                R.id.repeat_all -> intent.putExtra(EXTRA_REPEAT, RepeatMode.ON.value)
+                R.id.repeat_off -> intent.putExtra(EXTRA_REPEAT, RepeatMode.NONE.value)
             //
-                R.id.shuffle_all -> intent.putExtra(SHUFFLE, ShuffleMode.SHUFFLE_ALL.value)
-                R.id.shuffle_off -> intent.putExtra(SHUFFLE, ShuffleMode.SHUFFLE_NONE.value)
+                R.id.shuffle_all -> intent.putExtra(EXTRA_SHUFFLE, ShuffleMode.SHUFFLE_ALL.value)
+                R.id.shuffle_off -> intent.putExtra(EXTRA_SHUFFLE, ShuffleMode.SHUFFLE_NONE.value)
             //
                 R.id.play_file -> intent.putExtra(Track.POSITION.value, 10).data = Uri.parse("file://" + (findViewById<TextView>(R.id.play_file_path)).text)
             //
@@ -270,14 +312,14 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, View.OnLongClick
 
     private fun playSecondArtistFirstAlbum() {
         // Get first artist.
-        val c = contentResolver.query(ROOT_URI.buildUpon().appendEncodedPath("artists").build(),
+        val c = contentResolver.query(POWERAMP_ROOT_URI.buildUpon().appendEncodedPath("artists").build(),
                 arrayOf("artists._id", "artist"), null, null, "artist_sort COLLATE NOCASE")
         if (c != null) {
             c.moveToNext() // First artist.
             if (c.moveToNext()) { // Second artist.
                 val artistId = c.getLong(0)
                 val artist = c.getString(1)
-                val c2 = contentResolver.query(ROOT_URI.buildUpon().appendEncodedPath("artists_albums").build(),
+                val c2 = contentResolver.query(POWERAMP_ROOT_URI.buildUpon().appendEncodedPath("artists_albums").build(),
                         arrayOf("albums._id", "album"),
                         "artists._id=?", arrayOf(java.lang.Long.toString(artistId)), "album_sort COLLATE NOCASE")
                 if (c2 != null) {
@@ -288,7 +330,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, View.OnLongClick
                         Toast.makeText(this, "Playing artist: $artist album: $album", Toast.LENGTH_SHORT).show()
 
                         startService(createCommandIntent(Commands.OPEN_TO_PLAY)
-                                .setData(ROOT_URI.buildUpon()
+                                .setData(POWERAMP_ROOT_URI.buildUpon()
                                         .appendEncodedPath("artists")
                                         .appendEncodedPath(java.lang.Long.toString(artistId))
                                         .appendEncodedPath("albums")
@@ -309,13 +351,13 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, View.OnLongClick
 
     private fun playAllSongs() {
         startService(createCommandIntent(Commands.OPEN_TO_PLAY)
-                .setData(ROOT_URI.buildUpon().appendEncodedPath("files").build()))
+                .setData(POWERAMP_ROOT_URI.buildUpon().appendEncodedPath("files").build()))
 
     }
 
     private fun playFirstFolder() {
         // Get first folder id with some tracks.
-        val c = contentResolver.query(ROOT_URI.buildUpon().appendEncodedPath("folders").build(),
+        val c = contentResolver.query(POWERAMP_ROOT_URI.buildUpon().appendEncodedPath("folders").build(),
                 arrayOf(TableDefs.Folders._ID, TableDefs.Folders.PATH),
                 TableDefs.Folders.NUM_FILES + ">0", null, TableDefs.Folders.PATH)
         if (c != null) {
@@ -325,7 +367,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, View.OnLongClick
                 Toast.makeText(this, "Playing folder: " + path, Toast.LENGTH_SHORT).show()
 
                 startService(createCommandIntent(Commands.OPEN_TO_PLAY)
-                        .setData(ROOT_URI.buildUpon()
+                        .setData(POWERAMP_ROOT_URI.buildUpon()
                                 .appendEncodedPath("folders")
                                 .appendEncodedPath(java.lang.Long.toString(id))
                                 .appendEncodedPath("files")
@@ -337,7 +379,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, View.OnLongClick
 
     private fun playAlbum() {
         // Get first album id.
-        val c = contentResolver.query(ROOT_URI.buildUpon().appendEncodedPath("albums").build(), arrayOf("albums._id", "album"), null, null, "album")
+        val c = contentResolver.query(POWERAMP_ROOT_URI.buildUpon().appendEncodedPath("albums").build(), arrayOf("albums._id", "album"), null, null, "album")
         if (c != null) {
             if (c.moveToNext()) {
                 val albumId = c.getLong(0)
@@ -345,7 +387,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, View.OnLongClick
                 Toast.makeText(this, "Playing album: " + name, Toast.LENGTH_SHORT).show()
 
                 startService(createCommandIntent(Commands.OPEN_TO_PLAY)
-                        .setData(ROOT_URI.buildUpon()
+                        .setData(POWERAMP_ROOT_URI.buildUpon()
                                 .appendEncodedPath("albums")
                                 .appendEncodedPath(java.lang.Long.toString(albumId))
                                 .appendEncodedPath("files")
@@ -502,13 +544,13 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, View.OnLongClick
     private fun updateAlbumArt() {
         mAAIntent?.let {
             Log.w("Main", "updateAlbumArt")
-            val directAAPath = it.getStringExtra(ALBUM_ART_PATH)
+            val directAAPath = it.getStringExtra(EXTRA_ALBUM_ART_PATH)
 
             if (!TextUtils.isEmpty(directAAPath)) {
                 Log.w("Main", "has AA, albumArtPath=" + directAAPath)
                 findViewById<ImageView>(R.id.album_art).setImageURI(Uri.parse(directAAPath))
-            } else if (it.hasExtra(ALBUM_ART_BITMAP)) {
-                val albumArtBitmap = it.getParcelableExtra<Bitmap>(ALBUM_ART_BITMAP)
+            } else if (it.hasExtra(EXTRA_ALBUM_ART_BITMAP)) {
+                val albumArtBitmap = it.getParcelableExtra<Bitmap>(EXTRA_ALBUM_ART_BITMAP)
                 if (albumArtBitmap != null) {
                     Log.w("Main", "has AA, bitmap")
                     findViewById<ImageView>(R.id.album_art).setImageBitmap(albumArtBitmap)
@@ -537,7 +579,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, View.OnLongClick
         mStatusIntent?.let {
             var paused = true
 
-            val status = it.getIntExtra(STATUS, -1)
+            val status = it.getIntExtra(EXTRA_STATUS, -1)
 
             // Each status update can contain track position update as well.
             val pos = it.getIntExtra(Track.POSITION.value, -1)
@@ -547,7 +589,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, View.OnLongClick
 
             when (status) {
                 Status.TRACK_PLAYING.value -> {
-                    paused = it.getBooleanExtra(PAUSED, false)
+                    paused = it.getBooleanExtra(EXTRA_PAUSED, false)
                     startStopRemoteTrackTime(paused)
                 }
 
@@ -570,15 +612,15 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, View.OnLongClick
     }
 
     private fun debugDumpStatusIntent(intent: Intent) {
-        val status = intent.getIntExtra(STATUS, -1)
-        val paused = intent.getBooleanExtra(PAUSED, false)
-        val failed = intent.getBooleanExtra(FAILED, false)
+        val status = intent.getIntExtra(EXTRA_STATUS, -1)
+        val paused = intent.getBooleanExtra(EXTRA_PAUSED, false)
+        val failed = intent.getBooleanExtra(EXTRA_FAILED, false)
         Log.w("Main", "statusIntent status=$status paused=$paused failed=$failed")
     }
 
     private fun debugDumpPlayingModeIntent(intent: Intent) {
-        val shuffle = intent.getIntExtra(SHUFFLE, -1)
-        val repeat = intent.getIntExtra(REPEAT, -1)
+        val shuffle = intent.getIntExtra(EXTRA_SHUFFLE, -1)
+        val repeat = intent.getIntExtra(EXTRA_REPEAT, -1)
         Log.w("Main", "debugDumpPlayingModeIntent shuffle=$shuffle repeat=$repeat")
     }
 
@@ -588,7 +630,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, View.OnLongClick
         mCurrentTrack = null
 
         mTrackIntent?.let { intent ->
-            mCurrentTrack = intent.getBundleExtra(TRACK)
+            mCurrentTrack = intent.getBundleExtra(EXTRA_TRACK)
             mCurrentTrack?.let { track ->
                 val duration = track.getInt(Track.DURATION.value)
                 mRemoteTrackTime.updateTrackDuration(duration) // Let ReomoteTrackTime know about current song duration.
@@ -613,7 +655,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, View.OnLongClick
     private fun updatePlayingModeUI() {
         Log.w("Main", "updatePlayingModeUI")
         mPlayingModeIntent?.let {
-            val shuffle = it.getIntExtra(SHUFFLE, -1)
+            val shuffle = it.getIntExtra(EXTRA_SHUFFLE, -1)
             (findViewById<Button>(R.id.shuffle)).text = when (shuffle) {
                 ShuffleMode.SHUFFLE_ALL.value -> "Shuffle All"
                 ShuffleMode.SHUFFLE_CATS.value -> "Shuffle Categories"
@@ -622,11 +664,11 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, View.OnLongClick
                 else -> "Shuffle OFF"
             }
 
-            val repeat = it.getIntExtra(REPEAT, -1)
+            val repeat = it.getIntExtra(EXTRA_REPEAT, -1)
             (findViewById<Button>(R.id.repeat)).text = when (repeat) {
-                RepeatMode.REPEAT_ON.value -> "Repeat List"
-                RepeatMode.REPEAT_ADVANCE.value -> "Advance List"
-                RepeatMode.REPEAT_SONG.value -> "Repeat Song"
+                RepeatMode.ON.value -> "Repeat List"
+                RepeatMode.ADVANCE.value -> "Advance List"
+                RepeatMode.SONG.value -> "Repeat Song"
                 else -> "Repeat OFF"
             }
         }
@@ -685,7 +727,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, View.OnLongClick
         // Apply some throttling to avoid too many intents to be generated.
         if (ignoreThrottling || mLastSeekSentTime == 0L || System.currentTimeMillis() - mLastSeekSentTime > SEEK_THROTTLE) {
             mLastSeekSentTime = System.currentTimeMillis()
-            startService(Intent(ACTION_API_COMMAND).putExtra(COMMAND, Commands.SEEK.value).putExtra(Track.POSITION.value, position).setPackage(PACKAGE_NAME))
+            startService(Intent(ACTION_API_COMMAND).putExtra(EXTRA_COMMAND, Commands.SEEK.value).putExtra(Track.POSITION.value, position).setPackage(POWERAMP_PACKAGE_NAME))
             Log.w("Main", "sent")
         } else {
             Log.w("Main", "throttled")
