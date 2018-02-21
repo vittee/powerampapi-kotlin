@@ -14,7 +14,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.widget.*
 import com.vittee.poweramp.player.*
-import com.vittee.poweramp.player.TableDefs
+import com.vittee.poweramp.player.TableDefinitions
 import com.vittee.poweramp.player.api.Poweramp
 import java.io.File
 
@@ -219,7 +219,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, View.OnLongClick
                 val allFilesUri = poweramp.createContentUri { appendEncodedPath("files") }
 
                 // Find just any first available track
-                val c = contentResolver.query(allFilesUri, arrayOf(TableDefs.Files._ID, TableDefs.Files.FULL_PATH), null, null, TableDefs.Files.NAME + " COLLATE NOCASE LIMIT 1")
+                val c = contentResolver.query(allFilesUri, arrayOf(TableDefinitions.Files._ID, TableDefinitions.Files.FULL_PATH), null, null, TableDefinitions.Files.NAME + " COLLATE NOCASE LIMIT 1")
                 c?.let {
                     if (c.moveToNext()) {
                         mLastScannedFile = c.getString(1)
@@ -228,8 +228,8 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, View.OnLongClick
 
                         // Now set is as TAG_NOT_SCANNED
                         val values = ContentValues()
-                        values.put(TableDefs.Files.TAG_STATUS, TableDefs.Files.TAG_NOT_SCANNED)
-                        val updated = contentResolver.update(allFilesUri, values, TableDefs.Files._ID + "=" + id, null)
+                        values.put(TableDefinitions.Files.TAG_STATUS, TableDefinitions.Files.TAG_NOT_SCANNED)
+                        val updated = contentResolver.update(allFilesUri, values, TableDefinitions.Files._ID + "=" + id, null)
 
                         if (updated > 0) {
 
@@ -300,8 +300,8 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, View.OnLongClick
         // Get first folder id with some tracks.
         val c = contentResolver.query(
                 Poweramp.createContentUri { appendEncodedPath("folders") },
-                arrayOf(TableDefs.Folders._ID, TableDefs.Folders.PATH),
-                TableDefs.Folders.NUM_FILES + ">0", null, TableDefs.Folders.PATH
+                arrayOf(TableDefinitions.Folders._ID, TableDefinitions.Folders.PATH),
+                TableDefinitions.Folders.NUM_FILES + ">0", null, TableDefinitions.Folders.PATH
         )
 
         if (c != null) {

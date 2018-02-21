@@ -6,7 +6,7 @@ import android.support.v4.widget.SimpleCursorAdapter
 import android.view.View
 import android.widget.AdapterView
 import android.widget.ListView
-import com.vittee.poweramp.player.TableDefs
+import com.vittee.poweramp.player.TableDefinitions
 import com.vittee.poweramp.player.api.Poweramp
 import android.content.Intent
 
@@ -18,12 +18,12 @@ class FoldersActivity : ListActivity(), AdapterView.OnItemLongClickListener, Ada
         val cursor = contentResolver.query(
                 Poweramp.createContentUri { appendEncodedPath("folders") },
                 arrayOf(
-                        "${TableDefs.Folders._ID} AS _id",
-                        "${TableDefs.Folders.PARENT_NAME} || '/' || ${TableDefs.Folders.NAME} AS name",
-                        "${TableDefs.Folders.PARENT_NAME} AS parent_name",
-                        "${TableDefs.Folders.PARENT_ID} AS parent_id"
+                        "${TableDefinitions.Folders._ID} AS _id",
+                        "${TableDefinitions.Folders.PARENT_NAME} || '/' || ${TableDefinitions.Folders.NAME} AS name",
+                        "${TableDefinitions.Folders.PARENT_NAME} AS parent_name",
+                        "${TableDefinitions.Folders.PARENT_ID} AS parent_id"
                 ),
-                "${TableDefs.Folders.NUM_FILES} > 0",
+                "${TableDefinitions.Folders.NUM_FILES} > 0",
                 null,
                 "name COLLATE NOCASE"
         )
