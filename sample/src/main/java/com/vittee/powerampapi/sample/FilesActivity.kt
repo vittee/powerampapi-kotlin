@@ -9,6 +9,7 @@ import android.widget.AdapterView
 import android.widget.ListView
 import com.vittee.poweramp.player.PARAM_SHUFFLE
 import com.vittee.poweramp.player.ShuffleMode
+import com.vittee.poweramp.player.TableDefinitions
 import com.vittee.poweramp.player.api.Poweramp
 
 
@@ -24,27 +25,30 @@ class FilesActivity : ListActivity(), AdapterView.OnItemClickListener {
 
         mFolderId = intent.getLongExtra("id", 0)
 
-        val c = this.contentResolver.query(
-                Poweramp.createContentUri {
-                    appendEncodedPath("folders")
-                    appendEncodedPath(java.lang.Long.toString(mFolderId))
-                    appendEncodedPath("files")
-                },
-                arrayOf(
-                        "folder_files._id AS _id",
-                        "folder_files.name AS name",
-                        "folder_files.title_tag AS title_tag"
-                ),
-                null,
-                null,
-                "folder_files.name COLLATE NOCASE"
-        )
-        startManagingCursor(c)
+        val cursor = with (TableDefinitions.Files) {
+            contentResolver.query(
+                    Poweramp.createContentUri {
+                        appendEncodedPath("folders")
+                        appendEncodedPath(java.lang.Long.toString(mFolderId))
+                        appendEncodedPath("files")
+                    },
+                    arrayOf(
+                            "$_ID AS _id",
+                            "$NAME AS name",
+                            "$TITLE_TAG AS title_tag"
+                    ),
+                    null,
+                    null,
+                    "$NAME COLLATE NOCASE"
+            )
+        }
+
+        startManagingCursor(cursor)
 
         val adapter = SimpleCursorAdapter(
                 this, // Context.
                 android.R.layout.two_line_list_item,
-                c,
+                cursor,
                 arrayOf("name", "title_tag"),
                 intArrayOf(android.R.id.text1, android.R.id.text2)
         )
@@ -58,9 +62,9 @@ class FilesActivity : ListActivity(), AdapterView.OnItemClickListener {
 
         Poweramp.createContentUri {
             appendEncodedPath("folders")
-            appendEncodedPath(java.lang.Long.toString(mFolderId))
+            appendEncodedPath(mFolderId.toString())
             appendEncodedPath("files")
-            appendEncodedPath(java.lang.Long.toString(id))
+            appendEncodedPath(id.toString())
             appendQueryParameter(PARAM_SHUFFLE, ShuffleMode.SONGS.value.toString())
         }.let(poweramp::openToPlay)
 

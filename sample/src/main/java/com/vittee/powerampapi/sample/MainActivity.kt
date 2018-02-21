@@ -165,7 +165,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, View.OnLongClick
             }
 
             R.id.folders -> {
-                Intent (this, FoldersActivity::class.java).let(::startActivity)
+                Intent(this, FoldersActivity::class.java).let(::startActivity)
             }
 
             R.id.play_album -> playAlbum()
@@ -219,76 +219,84 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, View.OnLongClick
                 val allFilesUri = poweramp.createContentUri { appendEncodedPath("files") }
 
                 // Find just any first available track
-                val c = contentResolver.query(allFilesUri, arrayOf(TableDefinitions.Files._ID, TableDefinitions.Files.FULL_PATH), null, null, TableDefinitions.Files.NAME + " COLLATE NOCASE LIMIT 1")
-                c?.let {
-                    if (c.moveToNext()) {
-                        mLastScannedFile = c.getString(1)
-                        Log.e("Main", "Got file to scan=" + mLastScannedFile)
-                        val id = c.getLong(0)
-
-                        // Now set is as TAG_NOT_SCANNED
-                        val values = ContentValues()
-                        values.put(TableDefinitions.Files.TAG_STATUS, TableDefinitions.Files.TAG_NOT_SCANNED)
-                        val updated = contentResolver.update(allFilesUri, values, TableDefinitions.Files._ID + "=" + id, null)
-
-                        if (updated > 0) {
-
-                            // And call scanner
-                            startService(Intent(Scanner.ACTION_SCAN_TAGS).putExtra(Scanner.EXTRA_FAST_SCAN, true))
-
-                        } else {
-                            Toast.makeText(this, "File not updated", Toast.LENGTH_SHORT).show()
-                        }
-
-                    } else {
-                        Toast.makeText(this, "No tracks in DB", Toast.LENGTH_SHORT).show()
-                    }
-                    c.close()
+                val cursor = with(TableDefinitions.Files) {
+                    contentResolver.query(allFilesUri,
+                            arrayOf(_ID, FULL_PATH),
+                            null, null,
+                            "$NAME COLLATE NOCASE LIMIT 1"
+                    )
                 }
 
+                cursor.use {
+                    if (!cursor.moveToNext()) {
+                        Toast.makeText(this, "No tracks in DB", Toast.LENGTH_SHORT).show()
+                        return@use
+                    }
+
+                    mLastScannedFile = cursor.getString(1)
+                    Log.e("Main", "Got file to scan=$mLastScannedFile")
+
+                    with(TableDefinitions.Files) {
+                        val id = cursor.getLong(0)
+
+                        val updated = contentResolver.update(allFilesUri, ContentValues().apply { put(TAG_STATUS, TAG_NOT_SCANNED) }, "$_ID=$id", null) > 0
+                        if (!updated) {
+                            Toast.makeText(this@MainActivity, "File not updated", Toast.LENGTH_SHORT).show()
+                            return@with
+                        }
+
+                        Intent(Scanner.ACTION_SCAN_TAGS)
+                                .putExtra(Scanner.EXTRA_FAST_SCAN, true)
+                                .let(this@MainActivity::startService)
+                    }
+                }
             }
         }
     }
 
     private fun playSecondArtistFirstAlbum() {
         // Get first artist.
-        val c = contentResolver.query(
-                Poweramp.createContentUri { appendEncodedPath("artists") },
-                arrayOf("artists._id", "artist"), null, null, "artist_sort COLLATE NOCASE"
-        )
-
-        if (c != null) {
-            c.moveToNext() // First artist.
-            if (c.moveToNext()) { // Second artist.
-                val artistId = c.getLong(0)
-                val artist = c.getString(1)
-                val c2 = contentResolver.query(Poweramp.createContentUri { appendEncodedPath("artists_albums") },
-                        arrayOf("albums._id", "album"),
-                        "artists._id=?", arrayOf(artistId.toString()), "album_sort COLLATE NOCASE")
-                if (c2 != null) {
-                    if (c2.moveToNext()) {
-                        val albumId = c2.getLong(0)
-                        val album = c2.getString(1)
-
-                        Toast.makeText(this, "Playing artist: $artist album: $album", Toast.LENGTH_SHORT).show()
-
-                        poweramp.createContentUri {
-                            appendEncodedPath("artists")
-                            appendEncodedPath(artistId.toString())
-                            appendEncodedPath("albums")
-                            appendEncodedPath(java.lang.Long.toString(albumId))
-                            appendEncodedPath("files")
-                        }.let(poweramp::openToPlay)
-
-                    }
-                    c2.close()
-                }
-
-            }
-            c.close()
+        val cursor = with(TableDefinitions.Artists) {
+            contentResolver.query(
+                    Poweramp.createContentUri { appendEncodedPath("artists") },
+                    arrayOf(_ID, ARTIST), null, null, "$ARTIST_SORT COLLATE NOCASE"
+            )
         }
 
+        cursor.use {
+            cursor.moveToNext()
+            if (!cursor.moveToNext()) {
+                return
+            }
 
+            val artistId = cursor.getLong(0)
+            val artist = cursor.getString(1)
+
+            val cursor2 = with(TableDefinitions.Albums) {
+                contentResolver.query(Poweramp.createContentUri { appendEncodedPath("artists_albums") },
+                        arrayOf(_ID, ALBUM),
+                        "artists._id=?", arrayOf(artistId.toString()), "$ALBUM_SORT COLLATE NOCASE")
+            }
+
+            cursor2.use c2@ {
+                if (!cursor2.moveToNext()) {
+                    return@c2
+                }
+
+                val albumId = cursor2.getLong(0)
+                val album = cursor2.getString(1)
+
+                Toast.makeText(this, "Playing artist: $artist album: $album", Toast.LENGTH_SHORT).show()
+
+                poweramp.createContentUri {
+                    appendEncodedPath("artists")
+                    appendEncodedPath(artistId.toString())
+                    appendEncodedPath("albums")
+                    appendEncodedPath(albumId.toString())
+                    appendEncodedPath("files")
+                }.let(poweramp::openToPlay)
+            }
+        }
     }
 
     private fun playAllSongs() {
@@ -298,48 +306,53 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, View.OnLongClick
 
     private fun playFirstFolder() {
         // Get first folder id with some tracks.
-        val c = contentResolver.query(
-                Poweramp.createContentUri { appendEncodedPath("folders") },
-                arrayOf(TableDefinitions.Folders._ID, TableDefinitions.Folders.PATH),
-                TableDefinitions.Folders.NUM_FILES + ">0", null, TableDefinitions.Folders.PATH
-        )
+        val cursor = with (TableDefinitions.Folders) {
+            contentResolver.query(
+                    Poweramp.createContentUri { appendEncodedPath("folders") },
+                    arrayOf(_ID, PATH),
+                    "$NUM_FILES > 0", null,
+                    PATH
+            )
+        }
 
-        if (c != null) {
-            if (c.moveToNext()) {
-                val id = c.getLong(0)
-                val path = c.getString(1)
-                Toast.makeText(this, "Playing folder: " + path, Toast.LENGTH_SHORT).show()
-
-                Poweramp.createContentUri {
-                    appendEncodedPath("folders")
-                    appendEncodedPath(id.toString())
-                    appendEncodedPath("files")
-                }.let(poweramp::openToPlay)
+        cursor.use {
+            if (!cursor.moveToNext()) {
+                return
             }
-            c.close()
+
+            val id = cursor.getLong(0)
+            val path = cursor.getString(1)
+            Toast.makeText(this, "Playing folder: " + path, Toast.LENGTH_SHORT).show()
+
+            Poweramp.createContentUri {
+                appendEncodedPath("folders")
+                appendEncodedPath(id.toString())
+                appendEncodedPath("files")
+            }.let(poweramp::openToPlay)
         }
     }
 
     private fun playAlbum() {
         // Get first album id.
-        val c = contentResolver.query(
-                Poweramp.createContentUri { appendEncodedPath("albums") },
-                arrayOf("albums._id", "album"), null, null, "album"
-        )
+        val cursor = with(TableDefinitions.Albums) {
+            contentResolver.query(
+                    Poweramp.createContentUri { appendEncodedPath("albums") },
+                    arrayOf(_ID, ALBUM), null, null, ALBUM
+            )
+        }
 
-        if (c != null) {
-            if (c.moveToNext()) {
-                val albumId = c.getLong(0)
-                val name = c.getString(1)
-                Toast.makeText(this, "Playing album: " + name, Toast.LENGTH_SHORT).show()
-
-                Poweramp.createContentUri {
-                    appendEncodedPath("albums")
-                    appendEncodedPath(java.lang.Long.toString(albumId))
-                    appendEncodedPath("files")
-                }.let(poweramp::openToPlay)
+        cursor.use {
+            if (!cursor.moveToNext()) {
+                return
             }
-            c.close()
+
+            Toast.makeText(this, "Playing album: ${cursor.getString(1)}", Toast.LENGTH_SHORT).show()
+
+            Poweramp.createContentUri {
+                appendEncodedPath("albums")
+                appendEncodedPath(cursor.getLong(0).toString())
+                appendEncodedPath("files")
+            }.let(poweramp::openToPlay)
         }
 
     }

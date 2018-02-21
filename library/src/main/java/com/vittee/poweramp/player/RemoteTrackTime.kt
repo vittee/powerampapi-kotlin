@@ -3,7 +3,6 @@ package com.vittee.poweramp.player
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.os.Handler
 import android.util.Log
 import com.vittee.poweramp.player.api.Poweramp
@@ -12,8 +11,6 @@ import com.vittee.poweramp.player.api.Poweramp
 private const val UPDATE_DELAY = 1000L
 
 class RemoteTrackTime(private val context: Context) {
-
-
     private val mHandler = Handler()
     var trackTimeListener: TrackTimeListener? = null
 
@@ -26,7 +23,7 @@ class RemoteTrackTime(private val context: Context) {
     private val mTickRunnable = object : Runnable {
         override fun run() {
             mPosition = (System.currentTimeMillis() - mStartTimeMs + 500).toInt() / 1000 + mStartPosition
-            Log.w("RemoteTrackTime", "mTickRunnable mPosition=" + mPosition)
+            Log.w("RemoteTrackTime", "mTickRunnable mPosition=$mPosition")
 
             trackTimeListener?.onTrackPositionChanged(mPosition)
 
@@ -38,7 +35,7 @@ class RemoteTrackTime(private val context: Context) {
     private val mTrackPosSyncReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             val pos = intent.getIntExtra(Track.POSITION.value, 0)
-            Log.w("RemoteTrackTime", "mTrackPosSyncReceiver sync=" + pos)
+            Log.w("RemoteTrackTime", "mTrackPosSyncReceiver sync=$pos")
             updateTrackPosition(pos)
         }
 

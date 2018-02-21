@@ -3,7 +3,6 @@
 package com.vittee.poweramp.player
 
 import android.content.ComponentName
-import android.content.Intent
 import android.net.Uri
 
 
@@ -467,64 +466,50 @@ enum class RepeatMode(val value: Int) {
     SONG(3)
 }
 
-class Scanner {
+interface Scanner {
     companion object {
-        @JvmStatic
-        val ACTION_SCAN_DIRS = "com.maxmpz.audioplayer.ACTION_SCAN_DIRS"
-        @JvmStatic
-        val ACTION_SCAN_TAGS = "com.maxmpz.audioplayer.ACTION_SCAN_TAGS"
-        @JvmStatic
-        val ACTION_DIRS_SCAN_STARTED = "com.maxmpz.audioplayer.ACTION_DIRS_SCAN_STARTED"
-        @JvmStatic
-        val ACTION_DIRS_SCAN_FINISHED = "com.maxmpz.audioplayer.ACTION_DIRS_SCAN_FINISHED"
-        @JvmStatic
-        val ACTION_TAGS_SCAN_STARTED = "com.maxmpz.audioplayer.ACTION_TAGS_SCAN_STARTED"
-        @JvmStatic
-        val ACTION_TAGS_SCAN_PROGRESS = "com.maxmpz.audioplayer.ACTION_TAGS_SCAN_PROGRESS"
-        @JvmStatic
-        val ACTION_TAGS_SCAN_FINISHED = "com.maxmpz.audioplayer.ACTION_TAGS_SCAN_FINISHED"
-        @JvmStatic
-        val ACTION_FAST_TAGS_SCAN_FINISHED = "com.maxmpz.audioplayer.ACTION_FAST_TAGS_SCAN_FINISHED"
+        const val ACTION_SCAN_DIRS = "com.maxmpz.audioplayer.ACTION_SCAN_DIRS"
+        const val ACTION_SCAN_TAGS = "com.maxmpz.audioplayer.ACTION_SCAN_TAGS"
+        const val ACTION_DIRS_SCAN_STARTED = "com.maxmpz.audioplayer.ACTION_DIRS_SCAN_STARTED"
+        const val ACTION_DIRS_SCAN_FINISHED = "com.maxmpz.audioplayer.ACTION_DIRS_SCAN_FINISHED"
+        const val ACTION_TAGS_SCAN_STARTED = "com.maxmpz.audioplayer.ACTION_TAGS_SCAN_STARTED"
+        const val ACTION_TAGS_SCAN_PROGRESS = "com.maxmpz.audioplayer.ACTION_TAGS_SCAN_PROGRESS"
+        const val ACTION_TAGS_SCAN_FINISHED = "com.maxmpz.audioplayer.ACTION_TAGS_SCAN_FINISHED"
+        const val ACTION_FAST_TAGS_SCAN_FINISHED = "com.maxmpz.audioplayer.ACTION_FAST_TAGS_SCAN_FINISHED"
 
         /**
          * Extra.
          * Boolean.
          */
-        @JvmStatic
-        val EXTRA_FAST_SCAN = "fastScan"
+        const val EXTRA_FAST_SCAN = "fastScan"
         /**
          * Extra.
          * Int.
          */
-        @JvmStatic
-        val EXTRA_PROGRESS = "progress"
+        const val EXTRA_PROGRESS = "progress"
         /**
          * Extra.
          * Boolean.
          */
-        @JvmStatic
-        val EXTRA_TRACK_CONTENT_CHANGED = "trackContentChanged"
+        const val EXTRA_TRACK_CONTENT_CHANGED = "trackContentChanged"
 
         /**
          * Extra.
          * Boolean.
          */
-        @JvmStatic
-        val EXTRA_ERASE_TAGS = "eraseTags"
+        const val EXTRA_ERASE_TAGS = "eraseTags"
 
         /**
          * Extra.
          * Boolean.
          */
-        @JvmStatic
-        val EXTRA_FULL_RESCAN = "fullRescan"
+        const val EXTRA_FULL_RESCAN = "fullRescan"
 
         /**
          * Extra.
          * String.
          */
-        @JvmStatic
-        val EXTRA_CAUSE = "cause"
+        const val EXTRA_CAUSE = "cause"
     }
 }
 
@@ -547,16 +532,13 @@ enum class Cats(val value: Int) {
     RECENTLY_PLAYED(58),
 }
 
-class Settings {
+interface Settings {
     companion object {
-        @JvmStatic
-        val ACTION_EXPORT_SETTINGS = "com.maxmpz.audioplayer.ACTION_EXPORT_SETTINGS"
+        const val ACTION_EXPORT_SETTINGS = "com.maxmpz.audioplayer.ACTION_EXPORT_SETTINGS"
 
-        @JvmStatic
-        val ACTION_IMPORT_SETTINGS = "com.maxmpz.audioplayer.ACTION_IMPORT_SETTINGS"
+        const val ACTION_IMPORT_SETTINGS = "com.maxmpz.audioplayer.ACTION_IMPORT_SETTINGS"
 
-        @JvmStatic
-        val EXTRA_UI = "ui"
+        const val EXTRA_UI = "ui"
     }
 }
 
