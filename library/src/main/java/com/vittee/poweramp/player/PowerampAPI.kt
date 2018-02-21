@@ -91,61 +91,61 @@ enum class Commands(val value: Int) {
      * Extras:
      * - keepService - boolean - (optional) if true, Poweramp won't unload player service. Notification will be appropriately updated.
      */
-    TOGGLE_PLAY_PAUSE(1),
+    TogglePlayPause(1),
 
     /**
      * Extras:
      * - keepService - boolean - (optional) if true, Poweramp won't unload player service. Notification will be appropriately updated.
      */
-    PAUSE(2),
-    RESUME(3),
+    Pause(2),
+    Resume(3),
 
     /**
      * NOTE: subject to 200ms throttling.
      */
-    NEXT(4),
+    Next(4),
 
     /**
      * NOTE: subject to 200ms throttling.
      */
-    PREVIOUS(5),
+    Previous(5),
 
     /**
      * NOTE: subject to 200ms throttling.
      */
-    NEXT_IN_CAT(6),
+    NextInCat(6),
 
     /**
      * NOTE: subject to 200ms throttling.
      */
-    PREVIOUS_IN_CAT(7),
+    PreviousInCat(7),
 
     /**
      * Extras:
      * - showToast - boolean - (optional) if false, no toast will be shown. Applied for cycle only.
      * - repeat - int - (optional) if exists, appropriate mode will be directly selected, otherwise modes will be cycled, see Repeat class.
      */
-    REPEAT(8),
+    Repeat(8),
 
     /**
      * Extras:
      * - showToast - boolean - (optional) if false, no toast will be shown. Applied for cycle only.
      * - shuffle - int - (optional) if exists, appropriate mode will be directly selected, otherwise modes will be cycled, see Shuffle class.
      */
-    SHUFFLE(9),
+    Shuffle(9),
 
-    BEGIN_FAST_FORWARD(10),
-    END_FAST_FORWARD(11),
-    BEGIN_REWIND(12),
-    END_REWIND(13),
-    STOP(14),
+    BeginFastForward(10),
+    EndFastForward(11),
+    BeginRewind(12),
+    EndRewind(13),
+    Stop(14),
 
     /**
      * Extras:
      * - pos - int - seek position in seconds.
      */
-    SEEK(15),
-    POS_SYNC(16),
+    Seek(15),
+    PosSync(16),
 
     /**
      * Extras:
@@ -154,40 +154,40 @@ enum class Commands(val value: Int) {
      *
      * - pos - int - (optional) seek to this position in song before playing (see PowerampAPI.Track.POSITION)
      */
-    OPEN_TO_PLAY(20),
+    OpenToPlay(20),
 
     /**
      * Extras:
      * - id - long - preset ID
      */
-    SET_EQU_PRESET(50),
+    SetEQPreset(50),
 
     /**
      * Extras:
      * - value - string - equalizer values, see ACTION_EQU_CHANGED description.
      */
-    SET_EQU_STRING(51),
+    SetEQString(51),
 
     /**
      * Extras:
      * - name - string - equalizer band (bass/treble/preamp/31/62../8K/16K) name
      * - value - float - equalizer band value (bass/treble/, 31/62../8K/16K => -1.0...1.0, preamp => 0..2.0)
      */
-    SET_EQU_BAND(52),
+    SetEQBand(52),
 
     /**
      * Extras:
      * - equ - boolean - if exists and true, equalizer is enabled
      * - tone - boolean - if exists and true, tone is enabled
      */
-    SET_EQU_ENABLED(53),
+    SetEQEnabled(53),
 
     /**
      * Used by Notification controls to stop pending/paused service/playback and unload/remove notification.
      * Since 2.0.6
      */
 
-    STOP_SERVICE(100)
+    StopService(100)
 }
 
 /**
@@ -453,11 +453,11 @@ enum class Track(val value: String) {
 }
 
 enum class ShuffleMode(val value: Int) {
-    SHUFFLE_NONE(0),
-    SHUFFLE_ALL(1),
-    SHUFFLE_SONGS(2),
-    SHUFFLE_CATS(3), // Songs in order.
-    SHUFFLE_SONGS_AND_CATS(4) // Songs shuffled.
+    NONE(0),
+    ALL(1),
+    SONGS(2),
+    CATS(3), // Songs in order.
+    SONGS_AND_CATS(4) // Songs shuffled.
 }
 
 enum class RepeatMode(val value: Int) {
@@ -560,6 +560,3 @@ class Settings {
     }
 }
 
-fun newAPIIntent(): Intent {
-    return Intent(ACTION_API_COMMAND).setComponent(POWERAMP_PLAYER_SERVICE_COMPONENT_NAME)
-}

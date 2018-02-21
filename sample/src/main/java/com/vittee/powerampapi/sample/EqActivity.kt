@@ -16,6 +16,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.*
 import com.vittee.poweramp.player.*
+import com.vittee.poweramp.player.api.Poweramp
 import java.util.regex.Pattern
 
 
@@ -36,7 +37,7 @@ class EqActivity : AppCompatActivity(), CompoundButton.OnCheckedChangeListener, 
 
         // Create and bind spinner which binds to available PowerAMP presets.
         val presetSpinner = findViewById<View>(R.id.preset_spinner) as Spinner
-        val c = contentResolver.query(POWERAMP_ROOT_URI.buildUpon().appendEncodedPath("eq_presets").build(),
+        val c = contentResolver.query(Poweramp.createContentUri {  appendEncodedPath("eq_presets") },
                 arrayOf("_id", "name", "preset"), null, null, "preset, name")
         startManagingCursor(c)
         // Add first empty item to the merged cursor via matrix cursor with single row.
@@ -89,7 +90,7 @@ class EqActivity : AppCompatActivity(), CompoundButton.OnCheckedChangeListener, 
             presetString.append(name).append("=").append(value).append(";")
         }
 
-        startService(Intent(ACTION_API_COMMAND).putExtra(EXTRA_COMMAND, Commands.SET_EQU_STRING.value).putExtra(EXTRA_VALUE, presetString.toString()).setPackage(POWERAMP_PACKAGE_NAME))
+        startService(Intent(ACTION_API_COMMAND).putExtra(EXTRA_COMMAND, Commands.SetEQString.value).putExtra(EXTRA_VALUE, presetString.toString()).setPackage(POWERAMP_PACKAGE_NAME))
     }
 
     private fun seekBarToValue(name: String, progress: Int): Float {
@@ -283,14 +284,14 @@ class EqActivity : AppCompatActivity(), CompoundButton.OnCheckedChangeListener, 
 
             R.id.eq -> {
                 if (!mSettingEqu) {
-                    startService(Intent(ACTION_API_COMMAND).putExtra(EXTRA_COMMAND, Commands.SET_EQU_ENABLED.value).putExtra(EXTRA_EQU, isChecked).setPackage(POWERAMP_PACKAGE_NAME))
+                    startService(Intent(ACTION_API_COMMAND).putExtra(EXTRA_COMMAND, Commands.SetEQEnabled.value).putExtra(EXTRA_EQU, isChecked).setPackage(POWERAMP_PACKAGE_NAME))
                 }
                 mSettingEqu = false
             }
 
             R.id.tone -> {
                 if (!mSettingTone) {
-                    startService(Intent(ACTION_API_COMMAND).putExtra(EXTRA_COMMAND, Commands.SET_EQU_ENABLED.value).putExtra(EXTRA_TONE, isChecked).setPackage(POWERAMP_PACKAGE_NAME))
+                    startService(Intent(ACTION_API_COMMAND).putExtra(EXTRA_COMMAND, Commands.SetEQEnabled.value).putExtra(EXTRA_TONE, isChecked).setPackage(POWERAMP_PACKAGE_NAME))
                 }
                 mSettingTone = false
             }
@@ -303,7 +304,7 @@ class EqActivity : AppCompatActivity(), CompoundButton.OnCheckedChangeListener, 
 
     override fun onItemSelected(adapter: AdapterView<*>, item: View?, pos: Int, id: Long) {
         when {
-            !mSettingPreset -> startService(Intent(ACTION_API_COMMAND).putExtra(EXTRA_COMMAND, Commands.SET_EQU_PRESET.value).putExtra(EXTRA_ID, id).setPackage(POWERAMP_PACKAGE_NAME))
+            !mSettingPreset -> startService(Intent(ACTION_API_COMMAND).putExtra(EXTRA_COMMAND, Commands.SetEQPreset.value).putExtra(EXTRA_ID, id).setPackage(POWERAMP_PACKAGE_NAME))
             else -> mSettingPreset = false
         }
     }
@@ -313,7 +314,7 @@ class EqActivity : AppCompatActivity(), CompoundButton.OnCheckedChangeListener, 
         if ((findViewById<View>(R.id.dynamic) as CheckBox).isChecked) {
             val name = bar.tag as String
             val value = seekBarToValue(name, bar.progress)
-            startService(Intent(ACTION_API_COMMAND).putExtra(EXTRA_COMMAND, Commands.SET_EQU_BAND.value).putExtra(EXTRA_NAME, name).putExtra(EXTRA_VALUE, value).setPackage(POWERAMP_PACKAGE_NAME))
+            startService(Intent(ACTION_API_COMMAND).putExtra(EXTRA_COMMAND, Commands.SetEQBand.value).putExtra(EXTRA_NAME, name).putExtra(EXTRA_VALUE, value).setPackage(POWERAMP_PACKAGE_NAME))
         }
     }
 

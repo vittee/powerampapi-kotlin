@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Handler
 import android.util.Log
+import com.vittee.poweramp.player.api.Poweramp
 
 
 private const val UPDATE_DELAY = 1000L
@@ -44,10 +45,7 @@ class RemoteTrackTime(private val context: Context) {
     }
 
     fun registerAndLoadStatus() {
-        val filter = IntentFilter(ACTION_TRACK_POS_SYNC)
-
-        context.registerReceiver(mTrackPosSyncReceiver, filter)
-        context.startService(newAPIIntent().putExtra(EXTRA_COMMAND, Commands.POS_SYNC.value))
+        Poweramp.synchronizePosition(context, mTrackPosSyncReceiver)
 
         if (mPlaying) {
             mHandler.removeCallbacks(mTickRunnable)

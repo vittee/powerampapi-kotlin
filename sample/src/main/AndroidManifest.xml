@@ -17,7 +17,9 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".EqActivity"></activity>
+        <activity android:name=".EqActivity" />
+        <activity android:name=".FoldersActivity" />
+        <activity android:name=".FilesActivity"></activity>
     </application>
 
 </manifest>
