@@ -42,7 +42,7 @@ class EqActivity : AppCompatActivity(), CompoundButton.OnCheckedChangeListener, 
         startManagingCursor(c)
         // Add first empty item to the merged cursor via matrix cursor with single row.
         val mc = MatrixCursor(arrayOf("_id", "name", "preset"))
-        mc.addRow(arrayOf<Any?>(NO_ID, "", null))
+        mc.addRow(arrayOf(NO_ID, "", null))
         val mrgc = MergeCursor(arrayOf<Cursor>(mc, c))
 
         val adapter = SimpleCursorAdapter(this,

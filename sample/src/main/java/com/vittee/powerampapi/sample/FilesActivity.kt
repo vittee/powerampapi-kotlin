@@ -7,6 +7,7 @@ import android.util.Log
 import android.view.View
 import android.widget.AdapterView
 import android.widget.ListView
+import com.vittee.poweramp.player.EXTRA_ID
 import com.vittee.poweramp.player.PARAM_SHUFFLE
 import com.vittee.poweramp.player.ShuffleMode
 import com.vittee.poweramp.player.TableDefinitions
@@ -23,7 +24,7 @@ class FilesActivity : ListActivity(), AdapterView.OnItemClickListener {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_files)
 
-        mFolderId = intent.getLongExtra("id", 0)
+        mFolderId = intent.getLongExtra(EXTRA_ID, 0)
 
         val cursor = with (TableDefinitions.Files) {
             contentResolver.query(
