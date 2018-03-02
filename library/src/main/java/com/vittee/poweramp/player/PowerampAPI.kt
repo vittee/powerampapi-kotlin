@@ -452,18 +452,32 @@ enum class Track(val value: String) {
 }
 
 enum class ShuffleMode(val value: Int) {
+    UNKNOWN(-1),
     NONE(0),
     ALL(1),
     SONGS(2),
     CATS(3), // Songs in order.
     SONGS_AND_CATS(4) // Songs shuffled.
+    ;
+
+    companion object {
+        private val map = values().associateBy(ShuffleMode::value)
+        fun fromInt(v: Int) = if (map.containsKey(v)) map[v] else null
+    }
 }
 
 enum class RepeatMode(val value: Int) {
+    UNKNOWN(-1),
     NONE(0),
     ON(1),
     ADVANCE(2),
     SONG(3)
+    ;
+
+    companion object {
+        private val map = values().associateBy(RepeatMode::value)
+        fun fromInt(v: Int) = if (map.containsKey(v)) map[v] else null
+    }
 }
 
 interface Scanner {

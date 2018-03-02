@@ -96,7 +96,6 @@ class RemoteTrackTime(private val context: Context) {
     }
 
     fun updateTrackDuration(duration: Int) {
-        //mDuration = duration;
         trackTimeListener?.onTrackDurationChanged(duration)
     }
 }
