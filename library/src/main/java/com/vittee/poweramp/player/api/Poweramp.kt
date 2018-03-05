@@ -127,10 +127,6 @@ open class Poweramp(val context: Context) {
 
     private val albumArtReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            updateAlbumArt(intent)
-        }
-
-        private fun updateAlbumArt(intent: Intent) {
             val bitmap = when {
                 intent.hasExtra(EXTRA_ALBUM_ART_BITMAP) -> intent.getParcelableExtra<Bitmap>(EXTRA_ALBUM_ART_BITMAP)
                 else -> null

@@ -6,9 +6,7 @@ import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
-import android.os.Parcelable
 import android.support.v7.app.AppCompatActivity
-import android.text.TextUtils
 import android.util.Log
 import android.view.MotionEvent
 import android.view.View
@@ -19,9 +17,7 @@ import com.vittee.poweramp.player.api.Poweramp
 import java.io.File
 
 
-class MainActivity : AppCompatActivity(), View.OnClickListener, View.OnLongClickListener, View.OnTouchListener, SeekBar.OnSeekBarChangeListener, RemoteTrackTime.TrackTimeListener {
-    private lateinit var mRemoteTrackTime: RemoteTrackTime
-
+class MainActivity : AppCompatActivity(), View.OnClickListener, View.OnLongClickListener, View.OnTouchListener, SeekBar.OnSeekBarChangeListener, Poweramp.Listener {
     private lateinit var mDuration: TextView
     private lateinit var mElapsed: TextView
 
@@ -57,9 +53,6 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, View.OnLongClick
 
         mDuration = findViewById(R.id.duration)
         mElapsed = findViewById(R.id.elapsed)
-
-        mRemoteTrackTime = RemoteTrackTime(this)
-        mRemoteTrackTime.trackTimeListener = this
 
         (findViewById<TextView>(R.id.play_file_path)).text = Environment.getExternalStorageDirectory()?.let(::findFirstMP3)
         findViewById<Button>(R.id.play_file).setOnClickListener(this)
@@ -106,32 +99,50 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, View.OnLongClick
     override fun onDestroy() {
         super.onDestroy()
 
-        unregister()
-
-        mRemoteTrackTime.apply {
-            trackTimeListener = null
-            unregister()
+        try {
+            unregisterReceiver(mScanReceiver)
+        } catch (ex: Exception) {
         }
+
+        poweramp.unregister()
     }
 
 
     override fun onResume() {
         super.onResume()
 
-        registerAndLoadStatus()
-        mRemoteTrackTime.registerAndLoadStatus()
+        val filter = with(Scanner) {
+            IntentFilter().also {
+                arrayListOf(
+                        ACTION_DIRS_SCAN_STARTED,
+                        ACTION_DIRS_SCAN_FINISHED,
+                        ACTION_TAGS_SCAN_STARTED,
+                        ACTION_TAGS_SCAN_PROGRESS,
+                        ACTION_TAGS_SCAN_FINISHED,
+                        ACTION_FAST_TAGS_SCAN_FINISHED
+                ).forEach(it::addAction)
+            }
+        }
+
+        if (registerReceiver(mScanReceiver, filter) == null) { // No any scan progress, hide it (progress might be shown previously, before pause/resume)
+            findViewById<View>(R.id.scan_progress).visibility = View.INVISIBLE
+        }
+
+        poweramp.register()
     }
 
     override fun onPause() {
-        unregister()
-        mRemoteTrackTime.unregister()
+        try {
+            unregisterReceiver(mScanReceiver)
+        } catch (ex: Exception) {
+        }
+
+        poweramp.unregister()
 
         super.onPause()
     }
 
-    private fun createCommandIntent(command: Commands) = Intent(ACTION_API_COMMAND).putExtra(EXTRA_COMMAND, command.value).setPackage(POWERAMP_PACKAGE_NAME)
-
-    private val poweramp = Poweramp(this)
+    private val poweramp = Poweramp(this).also { it.addListener(this) }
 
     override fun onClick(v: View) {
         when (v.id) {
@@ -306,7 +317,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, View.OnLongClick
 
     private fun playFirstFolder() {
         // Get first folder id with some tracks.
-        val cursor = with (TableDefinitions.Folders) {
+        val cursor = with(TableDefinitions.Folders) {
             contentResolver.query(
                     Poweramp.createContentUri { appendEncodedPath("folders") },
                     arrayOf(_ID, PATH),
@@ -380,28 +391,6 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, View.OnLongClick
         return false
     }
 
-    private fun registerAndLoadStatus() {
-        // Note, it's not necessary to set mStatusIntent/mPlayingModeIntent this way here,
-        // but this approach can be used with null receiver to get current sticky intent without broadcast receiver.
-        mAAIntent = registerReceiver(mAAReceiver, IntentFilter(ACTION_AA_CHANGED))
-        mTrackIntent = registerReceiver(mTrackReceiver, IntentFilter(ACTION_TRACK_CHANGED))
-        mStatusIntent = registerReceiver(mStatusReceiver, IntentFilter(ACTION_STATUS_CHANGED))
-        mPlayingModeIntent = registerReceiver(mPlayingModeReceiver, IntentFilter(ACTION_PLAYING_MODE_CHANGED))
-
-        val filter = IntentFilter().apply {
-            addAction(Scanner.ACTION_DIRS_SCAN_STARTED)
-            addAction(Scanner.ACTION_DIRS_SCAN_FINISHED)
-            addAction(Scanner.ACTION_TAGS_SCAN_STARTED)
-            addAction(Scanner.ACTION_TAGS_SCAN_PROGRESS)
-            addAction(Scanner.ACTION_TAGS_SCAN_FINISHED)
-            addAction(Scanner.ACTION_FAST_TAGS_SCAN_FINISHED)
-        }
-
-        if (registerReceiver(mScanReceiver, filter) == null) { // No any scan progress, hide it (progress might be shown previously, before pause/resume)
-            findViewById<View>(R.id.scan_progress).visibility = View.INVISIBLE
-        }
-    }
-
     private val mScanReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             Log.w("Main", "Received intent=" + intent)
@@ -441,225 +430,6 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, View.OnLongClick
         }
     }
 
-    private fun unregister() {
-        if (mTrackIntent != null) {
-            try {
-                unregisterReceiver(mTrackReceiver)
-            } catch (ex: Exception) {
-            }
-            // Can throw exception if for some reason broadcast receiver wasn't registered.
-        }
-
-        if (mAAIntent != null) {
-            try {
-                unregisterReceiver(mAAReceiver)
-            } catch (ex: Exception) {
-            }
-
-        }
-
-        try {
-            unregisterReceiver(mStatusReceiver)
-        } catch (ex: Exception) {
-        }
-
-        try {
-            unregisterReceiver(mPlayingModeReceiver)
-        } catch (ex: Exception) {
-
-        }
-
-        try {
-            unregisterReceiver(mScanReceiver)
-        } catch (ex: Exception) {
-        }
-
-    }
-
-    private var mTrackIntent: Intent? = null
-
-    private val mTrackReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            mTrackIntent = intent
-            processTrackIntent()
-            Log.w("Main", "mTrackReceiver " + intent)
-        }
-    }
-
-    private var mAAIntent: Intent? = null
-
-    private val mAAReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            mAAIntent = intent
-
-            updateAlbumArt()
-
-            Log.w("Main", "mAAReceiver " + intent)
-        }
-    }
-
-    private fun updateAlbumArt() {
-        mAAIntent?.let {
-            Log.w("Main", "updateAlbumArt")
-            val directAAPath = it.getStringExtra(EXTRA_ALBUM_ART_PATH)
-
-            if (!TextUtils.isEmpty(directAAPath)) {
-                Log.w("Main", "has AA, albumArtPath=" + directAAPath)
-                findViewById<ImageView>(R.id.album_art).setImageURI(Uri.parse(directAAPath))
-            } else if (it.hasExtra(EXTRA_ALBUM_ART_BITMAP)) {
-                val albumArtBitmap = it.getParcelableExtra<Bitmap>(EXTRA_ALBUM_ART_BITMAP)
-                if (albumArtBitmap != null) {
-                    Log.w("Main", "has AA, bitmap")
-                    findViewById<ImageView>(R.id.album_art).setImageBitmap(albumArtBitmap)
-                }
-            } else {
-                Log.w("Main", "no AA")
-                findViewById<ImageView>(R.id.album_art).setImageBitmap(null)
-            }
-        }
-
-    }
-
-    private var mStatusIntent: Intent? = null
-
-    private val mStatusReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            mStatusIntent = intent
-
-            mStatusIntent?.let(::debugDumpStatusIntent)
-
-            updateStatusUI()
-        }
-    }
-
-    private fun updateStatusUI() {
-        mStatusIntent?.let {
-            var paused = true
-
-            // Each status update can contain track position update as well.
-            it.getIntExtra(Track.POSITION.value, -1).let { pos ->
-                if (pos != -1) {
-                    mRemoteTrackTime.updateTrackPosition(pos)
-                }
-            }
-
-            when (it.getIntExtra(EXTRA_STATUS, -1)) {
-                Status.TRACK_PLAYING.value -> {
-                    paused = it.getBooleanExtra(EXTRA_PAUSED, false)
-                    startStopRemoteTrackTime(paused)
-                }
-
-                Status.TRACK_ENDED.value, Status.PLAYING_ENDED.value -> {
-                    mRemoteTrackTime.stopSongProgress()
-                }
-
-                Status.TRACK_ENDED.value, Status.PLAYING_ENDED.value -> mRemoteTrackTime.stopSongProgress()
-            }
-
-            (findViewById<Button>(R.id.play)).text = when {
-                paused -> ">"
-                else -> "||"
-            }
-        }
-    }
-
-    private fun startStopRemoteTrackTime(paused: Boolean) {
-        when {
-            paused -> mRemoteTrackTime.stopSongProgress()
-            else -> mRemoteTrackTime.startSongProgress()
-        }
-    }
-
-    private fun debugDumpStatusIntent(intent: Intent) {
-        val status = intent.getIntExtra(EXTRA_STATUS, -1)
-        val paused = intent.getBooleanExtra(EXTRA_PAUSED, false)
-        val failed = intent.getBooleanExtra(EXTRA_FAILED, false)
-        Log.w("Main", "statusIntent status=$status paused=$paused failed=$failed")
-    }
-
-    private fun debugDumpPlayingModeIntent(intent: Intent) {
-        val shuffle = intent.getIntExtra(EXTRA_SHUFFLE, -1)
-        val repeat = intent.getIntExtra(EXTRA_REPEAT, -1)
-        Log.w("Main", "debugDumpPlayingModeIntent shuffle=$shuffle repeat=$repeat")
-    }
-
-    private var mCurrentTrack: Bundle? = null
-
-    private fun processTrackIntent() {
-        mCurrentTrack = null
-
-        mTrackIntent?.let { intent ->
-            mCurrentTrack = intent.getBundleExtra(EXTRA_TRACK)
-            mCurrentTrack?.let { track ->
-                mRemoteTrackTime.updateTrackDuration(track.getInt(Track.DURATION.value)) // Let RemoteTrackTime know about current song duration.
-            }
-
-            updateTrackUI()
-        }
-    }
-
-    private var mPlayingModeIntent: Intent? = null
-
-    private val mPlayingModeReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            mPlayingModeIntent = intent
-
-            debugDumpPlayingModeIntent(intent)
-
-            updatePlayingModeUI()
-        }
-    }
-
-    private fun updatePlayingModeUI() {
-        Log.w("Main", "updatePlayingModeUI")
-
-        mPlayingModeIntent?.let {
-            (findViewById<Button>(R.id.shuffle)).text = when (it.getIntExtra(EXTRA_SHUFFLE, -1)) {
-                ShuffleMode.ALL.value -> "Shuffle All"
-                ShuffleMode.CATS.value -> "Shuffle Categories"
-                ShuffleMode.SONGS.value -> "Shuffle Songs"
-                ShuffleMode.SONGS_AND_CATS.value -> "Shuffle Songs And Categories"
-                else -> "Shuffle OFF"
-            }
-
-            (findViewById<Button>(R.id.repeat)).text = when (it.getIntExtra(EXTRA_REPEAT, -1)) {
-                RepeatMode.ON.value -> "Repeat List"
-                RepeatMode.ADVANCE.value -> "Advance List"
-                RepeatMode.SONG.value -> "Repeat Song"
-                else -> "Repeat OFF"
-            }
-        }
-    }
-
-
-    private fun updateTrackUI() {
-        mCurrentTrack?.let {
-            (findViewById<TextView>(R.id.cat)).text = it.getInt(Track.CAT.value).toString()
-            (findViewById<TextView>(R.id.uri)).text = it.getParcelable<Parcelable>(Track.CAT_URI.value).toString()
-            (findViewById<TextView>(R.id.id)).text = it.getLong(Track.ID.value).toString()
-            (findViewById<TextView>(R.id.title)).text = it.getString(Track.TITLE.value)
-            (findViewById<TextView>(R.id.album)).text = it.getString(Track.ALBUM.value)
-            (findViewById<TextView>(R.id.artist)).text = it.getString(Track.ARTIST.value)
-            (findViewById<TextView>(R.id.path)).text = it.getString(Track.PATH.value)
-            //
-            (findViewById<TextView>(R.id.info)).text = StringBuilder()
-                    .append("Codec: ").append(it.getString(Track.CODEC.value)).append(" ")
-                    .append("Bitrate: ").append(it.getInt(Track.BITRATE.value, -1)).append(" ")
-                    .append("Sample Rate: ").append(it.getInt(Track.SAMPLE_RATE.value, -1)).append(" ")
-                    .append("Channels: ").append(it.getInt(Track.CHANNELS.value, -1)).append(" ")
-                    .append("Duration: ").append(it.getInt(Track.DURATION.value, -1)).append("sec ")
-
-            return
-        }
-
-        // Else clean everything.
-        (findViewById<TextView>(R.id.info)).text = ""
-        (findViewById<TextView>(R.id.title)).text = ""
-        (findViewById<TextView>(R.id.album)).text = ""
-        (findViewById<TextView>(R.id.artist)).text = ""
-        (findViewById<TextView>(R.id.path)).text = ""
-    }
-
     override fun onProgressChanged(bar: SeekBar?, progress: Int, fromUser: Boolean) {
         when (bar?.id) {
             R.id.song_seekbar -> if (fromUser) {
@@ -673,7 +443,6 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, View.OnLongClick
 
     private fun sendSeek(ignoreThrottling: Boolean) {
         val position = mSongSeekBar.progress
-        mRemoteTrackTime.updateTrackPosition(position)
 
         // Apply some throttling to avoid too many intents to be generated.
         if (!ignoreThrottling && mLastSeekSentTime != 0L && System.currentTimeMillis() - mLastSeekSentTime <= SEEK_THROTTLE) {
@@ -725,6 +494,34 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, View.OnLongClick
 
     }
 
+    override fun onTrackChanged(track: Poweramp.TrackInfo) {
+        if (track.valid) {
+            (findViewById<TextView>(R.id.cat)).text = track.cat.toString()
+            (findViewById<TextView>(R.id.uri)).text = track.uri.toString()
+            (findViewById<TextView>(R.id.id)).text = track.id.toString()
+            (findViewById<TextView>(R.id.title)).text = track.title
+            (findViewById<TextView>(R.id.album)).text = track.album
+            (findViewById<TextView>(R.id.artist)).text = track.artist
+            (findViewById<TextView>(R.id.path)).text = track.path
+            //
+            (findViewById<TextView>(R.id.info)).text = StringBuilder()
+                    .append("Codec: ").append(track.codec).append(" ")
+                    .append("Bitrate: ").append(track.bitrate).append(" ")
+                    .append("Sample Rate: ").append(track.samplerate).append(" ")
+                    .append("Channels: ").append(track.channels).append(" ")
+                    .append("Duration: ").append(track.duration).append("sec ")
+
+            return
+        }
+
+        // Else clean everything.
+        (findViewById<TextView>(R.id.info)).text = ""
+        (findViewById<TextView>(R.id.title)).text = ""
+        (findViewById<TextView>(R.id.album)).text = ""
+        (findViewById<TextView>(R.id.artist)).text = ""
+        (findViewById<TextView>(R.id.path)).text = ""
+    }
+
     override fun onTrackDurationChanged(duration: Int) {
         mDuration.text = formatTime(duration)
         mSongSeekBar.max = duration
@@ -736,5 +533,33 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, View.OnLongClick
         if (!mSongSeekBar.isPressed) {
             mSongSeekBar.progress = position
         }
+    }
+
+    override fun onPlaybackStatusChanged(paused: Boolean) {
+        (findViewById<Button>(R.id.play)).text = when {
+            paused -> ">"
+            else -> "||"
+        }
+    }
+
+    override fun onPlayingModeChanged(mode: Poweramp.PlayingMode) {
+        (findViewById<Button>(R.id.shuffle)).text = when (mode.shuffleMode) {
+            ShuffleMode.ALL -> "Shuffle All"
+            ShuffleMode.CATS -> "Shuffle Categories"
+            ShuffleMode.SONGS -> "Shuffle Songs"
+            ShuffleMode.SONGS_AND_CATS -> "Shuffle Songs And Categories"
+            else -> "Shuffle OFF"
+        }
+
+        (findViewById<Button>(R.id.repeat)).text = when (mode.repeatMode) {
+            RepeatMode.ON -> "Repeat List"
+            RepeatMode.ADVANCE -> "Advance List"
+            RepeatMode.SONG -> "Repeat Song"
+            else -> "Repeat OFF"
+        }
+    }
+
+    override fun onAlbumArt(bitmap: Bitmap?) {
+        findViewById<ImageView>(R.id.album_art).setImageBitmap(bitmap)
     }
 }

@@ -62,8 +62,8 @@ class FilesActivity : ListActivity(), AdapterView.OnItemClickListener {
         Log.w(TAG, "file press=$id")
 
         Poweramp.createContentUri {
-            appendEncodedPath("folders")
-            appendEncodedPath(mFolderId.toString())
+//            appendEncodedPath("folders")
+//            appendEncodedPath(mFolderId.toString())
             appendEncodedPath("files")
             appendEncodedPath(id.toString())
             appendQueryParameter(PARAM_SHUFFLE, ShuffleMode.SONGS.value.toString())
